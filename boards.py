@@ -1,168 +1,151 @@
-# File: bot.py (Web Service + Bot Version)
+# File: bot.py (FINAL 2026 VERSION with TABLE)
 
-# Naye imports jo humein chahiye
 import threading
 from flask import Flask
-
-# Aapke purane saare imports
 import os
-import logging
+import telegram
 import asyncio
 from datetime import datetime, timedelta
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
-from telegram.error import BadRequest, Forbidden
-
 
 # --- WEB SERVER (FLASK) PART ---
-# Ye hissa bot ko 24/7 jagaye rakhega.
 app = Flask(__name__)
-
 @app.route('/')
 def hello():
-    # Jab bhi UptimeRobot ping karega, ye message dikhega
-    return "Bot is alive and running!"
-
+    return "Bot is alive and countdown is running!"
 def run_flask():
-    # Render.com apne aap PORT environment variable set karta hai.
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)
 
+# --- TELEGRAM BOT PART ---
 
-# --- TELEGRAM BOT PART (Aapka poora code yahan hai, bina kisi change ke) ---
+# ==============================================================================
+#                                 SETTINGS (2026)
+# ==============================================================================
+BOT_TOKEN = '8265096272:AAE4HTHAovCNaofsqkVqD_5kX8fGOYq0IP4' 
+CHAT_ID = -1003356902972
 
-# --- CONFIGURATION ---
-TOKEN = os.environ.get('TELEGRAM_TOKEN')
-TARGET_CHAT_ID_STR = os.environ.get('TARGET_CHAT_ID')
+# <<<--- UPDATE INTERVAL 5 SECOND KAR DIYA HAI --->>>
+UPDATE_INTERVAL_SECONDS = 5
 
-if not TOKEN or not TARGET_CHAT_ID_STR:
-    raise ValueError("TELEGRAM_TOKEN aur TARGET_CHAT_ID dono environment variables set hone chahiye!")
+# <<<--- SAARI DATES 2026 KE LIYE UPDATE KAR DI HAIN --->>>
+# Main exam date (pehla exam)
+MAIN_EXAM_DATE = datetime(2026, 2, 17)
 
-TARGET_CHAT_ID = int(TARGET_CHAT_ID_STR)
-UPDATE_INTERVAL_SECONDS = 20
-MAIN_EXAM_DATE = datetime(2025, 2, 26)
+# Subject-wise dates
 TARGET_DATES = {
-    '📘 English': datetime(2025, 2, 26),
-    '🧮 Maths': datetime(2025, 3, 11),
-    '🔬 Science': datetime(2025, 3, 2),
-    # ... baaki subjects ...
+    '🧮 Maths': datetime(2026, 2, 17),
+    '📘 English': datetime(2026, 2, 21),
+    '🔬 Science': datetime(2026, 2, 25),
+    '🤖 AI/IT': datetime(2026, 2, 27),
+    '📜 Sanskrit': datetime(2026, 2, 28),
+    '🗣️ Hindi': datetime(2026, 3, 2),
+    '🏛️ SST': datetime(2026, 3, 7),
 }
-FOOTER_NAME = "Pranav International PVT. LTD."
-FOOTER_LINK = "pranav-sharma.pages.dev"
 
+# Footer
+FOOTER_NAME = "Pranav International PVT\. LTD\."
+FOOTER_LINK = "pranav\-sharma\.pages\.dev"
 MESSAGE_FILE = "message_info.txt"
-
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 BOT_START_TIME = datetime.now()
 
-# Aapke saare functions yahan aa jayenge (save_message_info, load_message_info, format_timedelta, etc.)
-# ... (INMEIN KOI BHI CHANGE NAHI KARNA HAI) ...
-def save_message_info(chat_id, message_id):
-    with open(MESSAGE_FILE, "w") as f:
-        f.write(f"{chat_id},{message_id}")
-
-def load_message_info():
+# ==============================================================================
+#                               HELPER FUNCTIONS
+# ==============================================================================
+# ... (Ye saare functions bilkul same rahenge, koi change nahi) ...
+def save_message_id(message_id):
+    with open(MESSAGE_FILE, "w") as f: f.write(str(message_id))
+def load_message_id():
     try:
-        with open(MESSAGE_FILE, "r") as f:
-            chat_id, message_id = f.read().strip().split(',')
-            return int(chat_id), int(message_id)
-    except FileNotFoundError:
-        return None, None
-    except Exception as e:
-        logging.error(f"Message info file padhne mein error: {e}")
-        return None, None
-
+        with open(MESSAGE_FILE, "r") as f: return int(f.read().strip())
+    except (FileNotFoundError, ValueError): return None
 def format_timedelta(td: timedelta):
     days, rem = divmod(td.total_seconds(), 86400)
     hours, rem = divmod(rem, 3600)
     minutes, seconds = divmod(rem, 60)
-    return f"{int(days)} days, {int(hours)} hrs, {int(minutes)} mins, {int(seconds)} sec"
+    return f"{int(days)}d, {int(hours)}h, {int(minutes)}m, {int(seconds)}s"
 
-async def update_countdown_message(context: ContextTypes.DEFAULT_TYPE):
-    job_data = context.job.data
-    chat_id = job_data['chat_id']
-    message_id = job_data['message_id']
-    now = datetime.now()
-    main_countdown = MAIN_EXAM_DATE - now
-    main_countdown_str = format_timedelta(main_countdown) if main_countdown.total_seconds() > 0 else "EXAMS HAVE STARTED!"
-    subject_lines = [f"• {s}: {(d - now).days} days" if (d-now).days >= 0 else f"• {s}: ✅ Done" for s, d in TARGET_DATES.items()]
-    subject_countdown_str = "\n".join(subject_lines)
-    uptime = now - BOT_START_TIME
-    uptime_str = format_timedelta(uptime)
-    message_text = f"""📢 **BOARD EXAM COUNTDOWN**
+# ==============================================================================
+#                               CORE COUNTDOWN LOGIC
+# ==============================================================================
+async def main_countdown_logic():
+    print("COUNTDOWN BOT STARTED (2026 Table Version)")
+    bot = telegram.Bot(token=BOT_TOKEN)
+    message_id = load_message_id()
+
+    if message_id is None:
+        try:
+            print("Sending a new message...")
+            sent_message = await bot.send_message(chat_id=CHAT_ID, text="⏳ Initializing 2026 countdown...")
+            message_id = sent_message.message_id
+            save_message_id(message_id)
+            print(f"New message sent. ID: {message_id}")
+        except Exception as e:
+            print(f"[!!!] FATAL: Could not send initial message: {e}")
+            return
+    else:
+        print(f"Resuming for message ID: {message_id}")
+
+    while True:
+        try:
+            now = datetime.now()
+            main_countdown = MAIN_EXAM_DATE - now
+            main_countdown_str = format_timedelta(main_countdown) if main_countdown.total_seconds() > 0 else "EXAMS STARTED\!"
+
+            # <<<--- YAHAN TABLE WALA FORMAT BANAYA GAYA HAI --->>>
+            table_header = """```
+| Date (2026)       | Subject                         | Days Left |
+|-------------------|---------------------------------|-----------|
+"""
+            table_rows = []
+            for subject, date in TARGET_DATES.items():
+                date_str = date.strftime('%b %d, %A')
+                days_left = (date - now).days
+                days_left_str = f"{days_left} days" if days_left >= 0 else "✅ Done"
+                # Table ko align karne ke liye padding add karna
+                table_rows.append(f"| {date_str:<17} | {subject:<31} | {days_left_str:<9} |")
+            
+            table_body = "\n".join(table_rows)
+            table_footer = "```"
+            
+            full_table = table_header + table_body + table_footer
+
+            # Pura message text
+            message_text = f"""📢 **BOARD EXAM COUNTDOWN \(2026\)**
+
 *Live:* `{now.strftime('%I:%M:%S %p — %d %b %Y')}`
----
-⏳ **TIME LEFT:** `{main_countdown_str}`
+⏳ *Time Left \(First Exam\):* `{main_countdown_str}`
 
-📚 **Days Left For Each Subject:**
-{subject_countdown_str}
+{full_table}
 
-—
+\—
 *Managed By 🏢 {FOOTER_NAME}*
 🔗 `{FOOTER_LINK}`
-⏱ `Uptime: {uptime_str}`"""
-    try:
-        await context.bot.edit_message_text(
-            chat_id=chat_id, message_id=message_id, text=message_text, parse_mode='MarkdownV2'
-        )
-    except BadRequest as e:
-        if "message is not modified" in str(e): pass
-        else:
-            logging.error(f"BadRequest: {e}. Job ruk sakta hai.")
-            # context.job_queue.stop() # Uncomment if you want it to stop on error
-    except Forbidden:
-        logging.error("Bot blocked or kicked. Job ruk raha hai.")
-        # context.job_queue.stop() # Uncomment if you want it to stop on error
-    except Exception as e:
-        logging.error(f"Unexpected error: {e}")
+"""
 
-async def start_countdown(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    chat_id = update.effective_chat.id
-    if chat_id != TARGET_CHAT_ID:
-        await update.message.reply_text("Sorry, I can only run in the designated channel/group.")
-        return
-    current_jobs = context.job_queue.get_jobs_by_name(str(chat_id))
-    for job in current_jobs:
-        job.schedule_removal()
-    initial_message = await context.bot.send_message(
-        chat_id=chat_id, text="⏳ Initializing new countdown... Please wait."
-    )
-    message_id = initial_message.message_id
-    save_message_info(chat_id, message_id)
-    context.job_queue.run_repeating(
-        update_countdown_message, interval=UPDATE_INTERVAL_SECONDS, first=1, name=str(chat_id),
-        data={'chat_id': chat_id, 'message_id': message_id}
-    )
-    await initial_message.reply_text("✅ Countdown started! This message will now be updated automatically.")
+            await bot.edit_message_text(
+                chat_id=CHAT_ID,
+                message_id=message_id,
+                text=message_text,
+                parse_mode='MarkdownV2'
+            )
+            # print(f"Message {message_id} updated at {now.strftime('%H:%M:%S')}") # Debugging ke liye on kar sakte hain
 
-async def post_init(application: Application):
-    chat_id, message_id = load_message_info()
-    if chat_id and message_id:
-        logging.info(f"Purana message mila: Chat ID={chat_id}, Message ID={message_id}. Countdown resume kar raha hoon.")
-        application.job_queue.run_repeating(
-            update_countdown_message, interval=UPDATE_INTERVAL_SECONDS, first=1, name=str(chat_id),
-            data={'chat_id': chat_id, 'message_id': message_id}
-        )
+        except telegram.error.BadRequest as e:
+            if "message is not modified" in str(e): pass
+            else: print(f"[!] FAILED to edit message: {e}")
+        except Exception as e:
+            print(f"[!] An unexpected error occurred: {e}")
+        
+        await asyncio.sleep(UPDATE_INTERVAL_SECONDS)
 
-# Yahan humne aapke `main()` function ko ek naye naam se wrap kar diya
-def run_telegram_bot():
-    """Bot ko start karein."""
-    print("Telegram Bot thread is starting...")
-    application = Application.builder().token(TOKEN).post_init(post_init).build()
-    
-    application.add_handler(CommandHandler("start", start_countdown))
-    
-    application.run_polling()
-    print("Telegram Bot thread has stopped.")
-
-
-# --- MAIN EXECUTION BLOCK (YAHAN SE SCRIPT ASLI MEIN CHALU HOGA) ---
-if __name__ == '__main__':
+# ==============================================================================
+#                               MAIN EXECUTION
+# ==============================================================================
+if __name__ == "__main__":
     print("Starting main application...")
-    
-    # 1. Flask web server ko ek alag background thread mein chalu karo
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.start()
-    
-    # 2. Telegram bot ko main thread mein chalu karo
-    run_telegram_bot()
+    try:
+        asyncio.run(main_countdown_logic())
+    except KeyboardInterrupt:
+        print("\nApplication stopped.")
