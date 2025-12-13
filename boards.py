@@ -15,11 +15,7 @@ def run_flask():
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)
 
-# --- TELEGRAM BOT PART ---
 
-# ==============================================================================
-#                                 SETTINGS (2026)
-# ==============================================================================
 BOT_TOKEN = '8265096272:AAE4HTHAovCNaofsqkVqD_5kX8fGOYq0IP4' 
 CHAT_ID = -1003356902972
 UPDATE_INTERVAL_SECONDS = 3
