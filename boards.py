@@ -22,7 +22,7 @@ def run_flask():
 # ==============================================================================
 BOT_TOKEN = '8265096272:AAE4HTHAovCNaofsqkVqD_5kX8fGOYq0IP4' 
 CHAT_ID = -1003356902972
-UPDATE_INTERVAL_SECONDS = 3
+UPDATE_INTERVAL_SECONDS = 5
 
 # --- TIMEZONE SETTING ---
 IST = ZoneInfo("Asia/Kolkata")
@@ -38,7 +38,7 @@ TARGET_DATES = {
     '🏛️ SST': datetime(2026, 3, 7, 6, 0, tzinfo=IST),
 }
 
-# --- QUOTES & LINKS (EXTENDED LISTS) ---
+# --- QUOTES & LINKS (Original text, will be escaped later) ---
 DAILY_QUOTES = [
     "The secret of getting ahead is getting started.", "The expert in anything was once a beginner.", "Don't wish for it. Work for it.",
     "The future belongs to those who believe in the beauty of their dreams.", "Success is the sum of small efforts, repeated day in and day out.",
@@ -72,7 +72,7 @@ QUICK_CHECK_QUOTES = [
 # --- FOOTER ---
 FOOTER_NAME = "Pranav International PVT\\. LTD\\."
 WEBSITE_URL = "https://pranav-sharma.pages.dev"
-INSTAGRAM_HANDLE = "pranavsharma_2028" # <-- APNA USERNAME YAHA DAALO
+INSTAGRAM_HANDLE = "pranavsharma_2028"
 
 MESSAGE_FILE = "message_info.txt"
 # ==============================================================================
@@ -95,86 +95,95 @@ def format_timedelta(td: timedelta):
 #                               CORE COUNTDOWN LOGIC
 # ==============================================================================
 async def main_countdown_logic():
-    print("COUNTDOWN BOT STARTED (Extended Quotes Version - 6 AM Target)")
+    print("COUNTDOWN BOT STARTED (Smart Send Logic)")
     bot = telegram.Bot(token=BOT_TOKEN)
     message_id = load_message_id()
 
     current_daily_quote = ""
     last_quote_update_day = None
 
-    if message_id is None:
-        try:
-            print("Sending a new message...")
-            sent_message = await bot.send_message(chat_id=CHAT_ID, text="⏳ Initializing bot with extended features...")
-            message_id = sent_message.message_id
-            save_message_id(message_id)
-            print(f"New message sent. ID: {message_id}")
-        except Exception as e:
-            print(f"[!!!] FATAL: Could not send initial message: {e}")
-            return
-    else:
+    if message_id:
         print(f"Resuming for message ID: {message_id}")
+    else:
+        print("No previous message found. Will send a new message on the first run.")
 
     while True:
-        try:
-            now = datetime.now(IST)
+        now = datetime.now(IST)
 
-            # --- DAILY QUOTE LOGIC ---
-            current_day = now.date()
-            if last_quote_update_day != current_day and DAILY_QUOTES:
-                last_quote_update_day = current_day
-                day_of_year = now.timetuple().tm_yday
-                quote_index = (day_of_year - 1) % len(DAILY_QUOTES)
-                current_daily_quote = DAILY_QUOTES[quote_index]
-                print(f"New Daily Quote set for {current_day}: '{current_daily_quote}'")
+        # --- Daily Quote Logic ---
+        current_day = now.date()
+        if last_quote_update_day != current_day and DAILY_QUOTES:
+            last_quote_update_day = current_day
+            day_of_year = now.timetuple().tm_yday
+            quote_index = (day_of_year - 1) % len(DAILY_QUOTES)
+            
+            # **FIX:** Escape special characters in the quote for MarkdownV2
+            original_quote = DAILY_QUOTES[quote_index]
+            current_daily_quote = original_quote.replace('.', '\\.').replace('!', '\\!').replace('-', '\\-')
+            
+            print(f"New Daily Quote set for {current_day}: '{original_quote}'")
 
-            # --- QUICK CHECK LOGIC ---
-            current_quick_quote = ""
-            if QUICK_CHECK_QUOTES:
-                quarter_hour_index = (now.hour * 4) + (now.minute // 15)
-                quote_index = quarter_hour_index % len(QUICK_CHECK_QUOTES)
-                current_quick_quote = QUICK_CHECK_QUOTES[quote_index]
+        # --- Quick Check Logic ---
+        current_quick_quote = ""
+        if QUICK_CHECK_QUOTES:
+            quarter_hour_index = (now.hour * 4) + (now.minute // 15)
+            quote_index = quarter_hour_index % len(QUICK_CHECK_QUOTES)
 
-            # --- SUBJECT COUNTDOWN LOGIC ---
-            subject_lines = []
-            for subject, date in TARGET_DATES.items():
-                time_left = date - now
-                if time_left.total_seconds() < 0:
-                    subject_lines.append(f"• {subject}: ✅ *Exam Over\\!*")
-                else:
-                    countdown_str = format_timedelta(time_left)
-                    subject_lines.append(f"• {subject}: *{countdown_str}*")
-            subject_countdown_str = "\n".join(subject_lines)
+            # **FIX:** Escape special characters in the quote for MarkdownV2
+            original_quote = QUICK_CHECK_QUOTES[quote_index]
+            current_quick_quote = original_quote.replace('?', '\\?').replace('!', '\\!').replace('.', '\\.').replace('-', '\\-')
 
-            # --- MESSAGE ASSEMBLY ---
-            message_text = f"""📢 **BOARD EXAM COUNTDOWN \\(2026\\)**
+        # --- Subject Countdown Logic ---
+        subject_lines = []
+        for subject, date in TARGET_DATES.items():
+            time_left = date - now
+            if time_left.total_seconds() < 0:
+                subject_lines.append(f"• {subject}: ✅ *Exam Over\\!*")
+            else:
+                countdown_str = format_timedelta(time_left)
+                subject_lines.append(f"• {subject}: *{countdown_str}*")
+        subject_countdown_str = "\n".join(subject_lines)
 
-*Live Time:* {now.strftime('%I:%M:%S %p — %d %b %Y')} *IST*
-\-\-\-
+        # **FIX:** Correctly escape characters for MarkdownV2 in the main message string
+        message_text = f"""📢 **BOARD EXAM COUNTDOWN \\(2026\\)**
+
+*Live Time:* {now.strftime('%I:%M:%S %p')} — {now.strftime('%d %b %Y')} *IST*
+\\-\\-\\-
 🗓️ *Subject\\-wise Countdown:*
 {subject_countdown_str}
-\-\-\-
+\\-\\-\\-
 💡 **Quote of the Day**
 > _{current_daily_quote}_
-\-\-\-
+\\-\\-\\-
 🏃 **Quick Check**
 > *{current_quick_quote}*
-\-\-\-
+\\-\\-\\-
 *Managed By 🏢 {FOOTER_NAME}*
 🌐 [Website]({WEBSITE_URL})  •  📸 [Instagram](https://www.instagram.com/{INSTAGRAM_HANDLE}/)
 """
-
-            await bot.edit_message_text(
-                chat_id=CHAT_ID,
-                message_id=message_id,
-                text=message_text,
-                parse_mode='MarkdownV2',
-                disable_web_page_preview=True
-            )
+        
+        try:
+            if message_id is None:
+                print("Sending the first complete message...")
+                sent_message = await bot.send_message(
+                    chat_id=CHAT_ID, text=message_text, parse_mode='MarkdownV2', disable_web_page_preview=True
+                )
+                message_id = sent_message.message_id
+                save_message_id(message_id)
+                print(f"First message sent successfully. ID: {message_id}")
+            else:
+                await bot.edit_message_text(
+                    chat_id=CHAT_ID, message_id=message_id, text=message_text, parse_mode='MarkdownV2', disable_web_page_preview=True
+                )
             
         except telegram.error.BadRequest as e:
             if "message is not modified" in str(e): pass
-            else: print(f"[!] FAILED to edit message: {e}")
+            else: 
+                print(f"[!] FAILED to process message: {e}")
+                if "message to edit not found" in str(e):
+                    print("[!] Message was deleted. Resetting message_id to send a new one.")
+                    message_id = None
+                    save_message_id("")
         except Exception as e:
             print(f"[!] An unexpected error occurred: {e}")
         
