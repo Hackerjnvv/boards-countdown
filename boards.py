@@ -72,7 +72,7 @@ QUICK_CHECK_QUOTES = [
 # --- FOOTER ---
 FOOTER_NAME = "Pranav International PVT\\. LTD\\."
 WEBSITE_URL = "https://pranav-sharma.pages.dev"
-INSTAGRAM_HANDLE = "pranavsharma_2028"
+INSTAGRAM_HANDLE = "itz_me_pranav_sharma"
 
 MESSAGE_FILE = "message_info.txt"
 # ==============================================================================
