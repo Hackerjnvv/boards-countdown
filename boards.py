@@ -22,7 +22,7 @@ def run_flask():
 # ==============================================================================
 BOT_TOKEN = '8265096272:AAE4HTHAovCNaofsqkVqD_5kX8fGOYq0IP4' 
 CHAT_ID = -1003356902972
-UPDATE_INTERVAL_SECONDS = 5
+UPDATE_INTERVAL_SECONDS = 3
 
 # --- TIMEZONE SETTING ---
 IST = ZoneInfo("Asia/Kolkata")
