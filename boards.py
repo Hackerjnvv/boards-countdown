@@ -141,7 +141,7 @@ async def main_countdown_logic():
         subject_countdown_str = "\n".join(subject_lines)
 
         # **FIX:** Correctly escape characters for MarkdownV2 in the main message string
-        message_text = f"""📢 **BOARD EXAM COUNTDOWN \\(2026\\)**
+        message_text = f"""📢 **BOARD EXAM CRITICAL COUNTDOWN \\(2026\\)**
 
 *Live Time:* {now.strftime('%I:%M:%S %p')} — {now.strftime('%d %b %Y')} *IST*
 \\-\\-\\-
