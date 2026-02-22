@@ -1,29 +1,35 @@
 import threading
-from flask import Flask
 import os
 import telegram
 import asyncio
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo 
+from zoneinfo import ZoneInfo
+from flask import Flask
+
+# --- CONFIGURATION (HARDCODED FOR TESTING) ---
+# ⚠️ Yahaan apna token aur chat ID daalein. Is code ko public mat karna.
+# ⚠️ Put your token and chat ID here. Do not make this code public.
+BOT_TOKEN = '8265096272:AAE4HTHAovCNaofsqkVqD_5kX8fGOYq0IP4'
+CHAT_ID = -1003356902972 # Agar channel hai to minus sign (-) ke saath
+
+UPDATE_INTERVAL_SECONDS = 2
+MESSAGE_FILE = "message_info.txt"
 
 # --- WEB SERVER (FLASK) PART ---
 app = Flask(__name__)
 @app.route('/')
 def hello():
     return "Bot is alive and all features are running!"
+
 def run_flask():
+    # PORT environment variable abhi bhi zaroori hai agar aap hosting platform par deploy karte hain
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)
-
-
-BOT_TOKEN = '8265096272:AAE4HTHAovCNaofsqkVqD_5kX8fGOYq0IP4' 
-CHAT_ID = -1003356902972
-UPDATE_INTERVAL_SECONDS = 2
 
 # --- TIMEZONE SETTING ---
 IST = ZoneInfo("Asia/Kolkata")
 
-
+# --- TARGET DATES & CONTENT ---
 TARGET_DATES = {
     # ===============================
     # 📚 CLASS 10 BOARDS (2026)
@@ -85,54 +91,51 @@ TARGET_DATES = {
     # ===============================
     '🏫 State CET / Other Engg Exams': datetime(2028, 5, 10, 0, 0, tzinfo=IST),
 }
-# --- QUOTES & LINKS (Original text, will be escaped later) ---
 DAILY_QUOTES = [
     "The secret of getting ahead is getting started.", "The expert in anything was once a beginner.", "Don't wish for it. Work for it.",
     "The future belongs to those who believe in the beauty of their dreams.", "Success is the sum of small efforts, repeated day in and day out.",
     "It’s not whether you get knocked down, it’s whether you get up.", "Believe you can and you're halfway there.",
-    "Push yourself, because no one else is going to do it for you.", "The harder you work for something, the greater you'll feel when you achieve it.",
-    "Dream bigger. Do bigger.", "Study while others are sleeping; work while others are loafing.", "Success doesn't just find you. You have to go out and get it.",
-    "The pain you feel today will be the strength you feel tomorrow.", "Focus on your goal. Don't look in any direction but ahead.",
-    "A little progress each day adds up to big results.", "Strive for progress, not perfection.", "Your future is created by what you do today, not tomorrow.",
-    "The only way to do great work is to love what you do.", "Don't stop when you're tired. Stop when you're done.",
-    "The difference between ordinary and extraordinary is that little extra.", "Discipline is the bridge between goals and accomplishment.",
-    "Wake up with determination. Go to bed with satisfaction.", "It's going to be hard, but hard does not mean impossible.",
-    "The key to success is to focus on goals, not obstacles.", "Doubt kills more dreams than failure ever will.", "You are stronger than you think.",
-    "There are no shortcuts to any place worth going.", "Make today count. You'll never get it back.", "The grind never stops. Keep going.",
-    "One day, all your hard work will pay off.", "Be so good they can't ignore you.", "Hustle in silence and let your success make the noise.",
-    "If you get tired, learn to rest, not to quit.", "The secret to success is consistency.", "Small steps every day lead to massive results.",
-    "Your only limit is your mind.", "Prove them wrong.", "It's a slow process, but quitting won't speed it up.",
-    "Fall seven times, stand up eight.", "A year from now, you'll wish you had started today.", "Let your habits be stronger than your excuses."
 ]
-
 QUICK_CHECK_QUOTES = [
     "Are you hydrated? Go drink a glass of water!", "Sit straight! Your back will thank you.", "Take 5 deep breaths. Inhale positivity, exhale stress.",
     "Did you stretch your legs? A quick walk can help.", "Blink a few times. Give your eyes a break from the screen.",
-    "Is your study area clean? A tidy space equals a tidy mind.", "Quickly review what you just learned. Reinforce it!",
-    "Think of one thing you're grateful for right now.", "Is your phone away? Avoid distractions!", "How's your posture? Straighten your spine.",
-    "Time for a 2-minute mental break. Just close your eyes.", "Wiggle your toes and fingers to get the blood flowing.",
-    "Did you eat a healthy snack? Fuel your brain.", "Recite a formula or definition from memory.", "Stand up and stretch your arms to the ceiling.",
-    "Is there any background noise? Try to minimize it.", "Smile! It can improve your mood.", "Take a moment to appreciate your hard work.",
-    "20-20-20 Rule: Look at something 20 feet away for 20 seconds.", "Positive thoughts only. You've got this!"
 ]
-
 # --- FOOTER ---
 FOOTER_NAME = "Pranav International PVT\\. LTD\\."
 WEBSITE_URL = "https://pranav-sharma.pages.dev"
 INSTAGRAM_HANDLE = "itz_me_pranav_sharma"
 
-MESSAGE_FILE = "message_info.txt"
 # ==============================================================================
 #                               HELPER FUNCTIONS
 # ==============================================================================
+
+def escape_markdown_v2(text: str) -> str:
+    """Escapes characters for Telegram's MarkdownV2 parse mode."""
+    escape_chars = r'_*[]()~`>#+-=|{}.!'
+    return ''.join(f'\\{char}' if char in escape_chars else char for char in text)
+
 def save_message_id(message_id):
-    with open(MESSAGE_FILE, "w") as f: f.write(str(message_id))
+    """Saves the message ID to a file. If message_id is None, deletes the file."""
+    if message_id:
+        with open(MESSAGE_FILE, "w") as f:
+            f.write(str(message_id))
+    else:
+        if os.path.exists(MESSAGE_FILE):
+            os.remove(MESSAGE_FILE)
+
 def load_message_id():
+    """Loads the message ID from a file. Returns None if not found or invalid."""
     try:
-        with open(MESSAGE_FILE, "r") as f: return int(f.read().strip())
-    except (FileNotFoundError, ValueError): return None
+        if not os.path.exists(MESSAGE_FILE):
+            return None
+        with open(MESSAGE_FILE, "r") as f:
+            content = f.read().strip()
+            return int(content) if content else None
+    except (ValueError, FileNotFoundError):
+        return None
 
 def format_timedelta(td: timedelta):
+    """Formats a timedelta object into a 'Dd, Hh, Mm, Ss' string."""
     days, rem = divmod(td.total_seconds(), 86400)
     hours, rem = divmod(rem, 3600)
     minutes, seconds = divmod(rem, 60)
@@ -150,9 +153,9 @@ async def main_countdown_logic():
     last_quote_update_day = None
 
     if message_id:
-        print(f"Resuming for message ID: {message_id}")
+        print(f"Resuming with message ID: {message_id}")
     else:
-        print("No previous message found. Will send a new message on the first run.")
+        print("No previous message ID found. Will send a new message.")
 
     while True:
         now = datetime.now(IST)
@@ -163,11 +166,8 @@ async def main_countdown_logic():
             last_quote_update_day = current_day
             day_of_year = now.timetuple().tm_yday
             quote_index = (day_of_year - 1) % len(DAILY_QUOTES)
-            
-            # **FIX:** Escape special characters in the quote for MarkdownV2
             original_quote = DAILY_QUOTES[quote_index]
-            current_daily_quote = original_quote.replace('.', '\\.').replace('!', '\\!').replace('-', '\\-')
-            
+            current_daily_quote = escape_markdown_v2(original_quote)
             print(f"New Daily Quote set for {current_day}: '{original_quote}'")
 
         # --- Quick Check Logic ---
@@ -175,35 +175,34 @@ async def main_countdown_logic():
         if QUICK_CHECK_QUOTES:
             quarter_hour_index = (now.hour * 4) + (now.minute // 15)
             quote_index = quarter_hour_index % len(QUICK_CHECK_QUOTES)
-
-            # **FIX:** Escape special characters in the quote for MarkdownV2
             original_quote = QUICK_CHECK_QUOTES[quote_index]
-            current_quick_quote = original_quote.replace('?', '\\?').replace('!', '\\!').replace('.', '\\.').replace('-', '\\-')
+            current_quick_quote = escape_markdown_v2(original_quote)
 
         # --- Subject Countdown Logic ---
         subject_lines = []
         for subject, date in TARGET_DATES.items():
+            escaped_subject = escape_markdown_v2(subject)
             time_left = date - now
             if time_left.total_seconds() < 0:
-                subject_lines.append(f"• {subject}: ✅ *Exam Over\\!*")
+                subject_lines.append(f"• {escaped_subject}: ✅ *Exam Over\\!*")
             else:
                 countdown_str = format_timedelta(time_left)
-                subject_lines.append(f"• {subject}: *{countdown_str}*")
+                subject_lines.append(f"• {escaped_subject}: *{countdown_str}*")
         subject_countdown_str = "\n".join(subject_lines)
 
-        # **FIX:** Correctly escape characters for MarkdownV2 in the main message string
-        message_text = f"""📢 **ALL EXAM CRITICAL COUNTDOWN**
+        # --- Construct Final Message ---
+        message_text = f"""📢 *ALL EXAM CRITICAL COUNTDOWN*
 
 *Live Time:* {now.strftime('%I:%M:%S %p')} — {now.strftime('%d %b %Y')} *IST*
 \\-\\-\\-
 🗓️ *Subject\\-wise Countdown:*
 {subject_countdown_str}
 \\-\\-\\-
-💡 **Quote of the Day**
-> _{current_daily_quote}_
+💡 *Quote of the Day*
+> {current_daily_quote}
 \\-\\-\\-
-🏃 **Quick Check**
-> *{current_quick_quote}*
+🏃 *Quick Check*
+> _{current_quick_quote}_
 \\-\\-\\-
 *Managed By 🏢 {FOOTER_NAME}*
 🌐 [Website]({WEBSITE_URL})  •  📸 [Instagram](https://www.instagram.com/{INSTAGRAM_HANDLE}/)
@@ -211,28 +210,31 @@ async def main_countdown_logic():
         
         try:
             if message_id is None:
-                print("Sending the first complete message...")
+                print("Sending new message...")
                 sent_message = await bot.send_message(
                     chat_id=CHAT_ID, text=message_text, parse_mode='MarkdownV2', disable_web_page_preview=True
                 )
                 message_id = sent_message.message_id
                 save_message_id(message_id)
-                print(f"First message sent successfully. ID: {message_id}")
+                print(f"New message sent successfully. ID: {message_id}")
             else:
                 await bot.edit_message_text(
                     chat_id=CHAT_ID, message_id=message_id, text=message_text, parse_mode='MarkdownV2', disable_web_page_preview=True
                 )
             
         except telegram.error.BadRequest as e:
-            if "message is not modified" in str(e): pass
+            if "message is not modified" in str(e):
+                pass
+            elif "message to edit not found" in str(e):
+                print("[!] Message was deleted from chat. Resetting to send a new one.")
+                message_id = None
+                save_message_id(None)
             else: 
-                print(f"[!] FAILED to process message: {e}")
-                if "message to edit not found" in str(e):
-                    print("[!] Message was deleted. Resetting message_id to send a new one.")
-                    message_id = None
-                    save_message_id("")
+                print(f"[!] A Telegram BadRequest occurred: {e}")
+                print(f"--- Failing Message Text ---\n{message_text}\n---------------------------")
         except Exception as e:
             print(f"[!] An unexpected error occurred: {e}")
+            await asyncio.sleep(10)
         
         await asyncio.sleep(UPDATE_INTERVAL_SECONDS)
 
@@ -240,10 +242,20 @@ async def main_countdown_logic():
 #                               MAIN EXECUTION
 # ==============================================================================
 if __name__ == "__main__":
+    # Check if token/ID are placeholders
+    if 'YOUR_BOT_TOKEN_HERE' in BOT_TOKEN or 'YOUR_CHAT_ID_HERE' in str(CHAT_ID):
+        print("FATAL ERROR: Please replace 'YOUR_BOT_TOKEN_HERE' and 'YOUR_CHAT_ID_HERE' in the script with your actual bot token and chat ID.")
+        exit()
+
     print("Starting main application...")
+    
     flask_thread = threading.Thread(target=run_flask)
+    flask_thread.daemon = True
     flask_thread.start()
+    
     try:
         asyncio.run(main_countdown_logic())
     except KeyboardInterrupt:
-        print("\nApplication stopped.")
+        print("\nApplication stopped by user.")
+    except Exception as e:
+        print(f"\nCRITICAL FAILURE in main loop: {e}")
