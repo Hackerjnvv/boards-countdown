@@ -18,13 +18,16 @@ def run_flask():
 
 BOT_TOKEN = '8265096272:AAE4HTHAovCNaofsqkVqD_5kX8fGOYq0IP4' 
 CHAT_ID = -1003356902972
-UPDATE_INTERVAL_SECONDS = 3
+UPDATE_INTERVAL_SECONDS = 2
 
 # --- TIMEZONE SETTING ---
 IST = ZoneInfo("Asia/Kolkata")
 
-# --- TARGET DATES (Target: 6:00 AM IST) ---
+
 TARGET_DATES = {
+    # ===============================
+    # 📚 CLASS 10 BOARDS (2026)
+    # ===============================
     '🧮 Maths': datetime(2026, 2, 17, 6, 0, tzinfo=IST),
     '📘 English': datetime(2026, 2, 21, 6, 0, tzinfo=IST),
     '🔬 Science': datetime(2026, 2, 25, 6, 0, tzinfo=IST),
@@ -32,8 +35,56 @@ TARGET_DATES = {
     '📜 Sanskrit': datetime(2026, 2, 28, 6, 0, tzinfo=IST),
     '🗣️ Hindi': datetime(2026, 3, 2, 6, 0, tzinfo=IST),
     '🏛️ SST': datetime(2026, 3, 7, 6, 0, tzinfo=IST),
-}
 
+    # ===============================
+    # 🎓 CLASS 11 (PCM + PCB) 2026–27
+    # ===============================
+    '📐 Class 11 Physics Midterm': datetime(2026, 9, 15, 6, 0, tzinfo=IST),
+    '⚗️ Class 11 Chemistry Midterm': datetime(2026, 9, 20, 6, 0, tzinfo=IST),
+    '📊 Class 11 Maths Midterm': datetime(2026, 9, 25, 6, 0, tzinfo=IST),
+    '🧬 Class 11 Biology Midterm': datetime(2026, 9, 30, 6, 0, tzinfo=IST),
+    '📘 Class 11 Final Exams': datetime(2027, 2, 20, 6, 0, tzinfo=IST),
+
+    # ===============================
+    # 🧠 CLASS 11 PREP MILESTONES
+    # ===============================
+    '🧠 Syllabus 30% Complete (PCM+PCB)': datetime(2027, 4, 1, 0, 0, tzinfo=IST),
+    '📊 First JEE Mock Test': datetime(2027, 5, 1, 6, 0, tzinfo=IST),
+    '📊 First NEET Mock Test': datetime(2027, 5, 5, 6, 0, tzinfo=IST),
+    '🧬 Biology NCERT 1st Revision': datetime(2027, 6, 15, 0, 0, tzinfo=IST),
+
+    # ===============================
+    # 🎓 CLASS 12 (PCM + PCB) 2027–28
+    # ===============================
+    '📐 Class 12 Pre-Boards': datetime(2027, 12, 10, 6, 0, tzinfo=IST),
+    '📘 Class 12 Boards Start': datetime(2028, 3, 1, 6, 0, tzinfo=IST),
+
+    # ===============================
+    # 🔥 FINAL SYLLABUS COMPLETION
+    # ===============================
+    '🔥 Full Syllabus Complete (PCM+PCB)': datetime(2027, 11, 15, 0, 0, tzinfo=IST),
+    '🔁 Physics & Chemistry 3rd Revision': datetime(2028, 3, 20, 0, 0, tzinfo=IST),
+    '🔁 Biology NCERT 3rd Revision': datetime(2028, 3, 25, 0, 0, tzinfo=IST),
+    '🔁 Maths Full Revision': datetime(2028, 3, 28, 0, 0, tzinfo=IST),
+
+    # ===============================
+    # 🏆 COMPETITIVE EXAMS – ENGINEERING
+    # ===============================
+    '💪 JEE Main (Jan Attempt)': datetime(2028, 1, 5, 0, 0, tzinfo=IST),
+    '⚡ JEE Main (April Attempt)': datetime(2028, 4, 5, 0, 0, tzinfo=IST),
+    '🚀 JEE Advanced (Target)': datetime(2028, 6, 2, 9, 0, tzinfo=IST),
+
+    # ===============================
+    # 🏥 COMPETITIVE EXAMS – MEDICAL
+    # ===============================
+    '🩺 NEET UG (Target)': datetime(2028, 5, 7, 14, 0, tzinfo=IST),
+    '🏥 AIIMS / Other Medical Exams': datetime(2028, 6, 1, 0, 0, tzinfo=IST),
+
+    # ===============================
+    # 🎯 BACKUP / STATE EXAMS
+    # ===============================
+    '🏫 State CET / Other Engg Exams': datetime(2028, 5, 10, 0, 0, tzinfo=IST),
+}
 # --- QUOTES & LINKS (Original text, will be escaped later) ---
 DAILY_QUOTES = [
     "The secret of getting ahead is getting started.", "The expert in anything was once a beginner.", "Don't wish for it. Work for it.",
@@ -141,7 +192,7 @@ async def main_countdown_logic():
         subject_countdown_str = "\n".join(subject_lines)
 
         # **FIX:** Correctly escape characters for MarkdownV2 in the main message string
-        message_text = f"""📢 **BOARD EXAM CRITICAL COUNTDOWN \\(2026\\)**
+        message_text = f"""📢 **ALL EXAM CRITICAL COUNTDOWN**
 
 *Live Time:* {now.strftime('%I:%M:%S %p')} — {now.strftime('%d %b %Y')} *IST*
 \\-\\-\\-
